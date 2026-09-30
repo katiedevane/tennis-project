@@ -46,6 +46,4 @@
 - `united cup` excluded (team event, two host cities).
 - Indoor/outdoor is not in the data, so it is researched by hand. Status values: outdoor, indoor, roof, unknown.
 
-## Audit
 
-- 2026-09-30 Ran `04_audit.ipynb`: bucket settings verified, stored files match the manifest (sha256 and row counts), BigQuery row count equals the manifest total. Soft delete period: `<FILL IN>`.
