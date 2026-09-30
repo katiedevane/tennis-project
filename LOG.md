@@ -41,9 +41,6 @@
 
 ## Venue table
 
-- 152 distinct tournament names across levels G, PM, P, I, F (141 or so once F is dropped; to confirm). Variants of one place share a city (for example the four Cluj-Napoca spellings, the three 's-Hertogenbosch spellings).
-- Non-city names mapped by hand (Australian Open to Melbourne, Roland Garros to Paris, US Open to New York, Wimbledon and Queen's Club to London).
-- `united cup` excluded (team event, two host cities).
-- Indoor/outdoor is not in the data, so it is researched by hand. Status values: outdoor, indoor, roof, unknown.
+- 2026-09-20 Created 02_venues.ipynb. Venue list rebuilt from tennis_raw (levels G, PM, P, I): 144 names, 122 places after hand mappings in code; 1 (united cup) excluded. Geocoded via Open-Meteo Geocoding API (no key needed): raw responses stored write-once under raw/open_meteo/geocoding/ with request and fetch time; manifest manifests/open_meteo_geocoding_<stamp>.json. 
 
 
