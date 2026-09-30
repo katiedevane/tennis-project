@@ -58,10 +58,8 @@ A relational database (Cloud SQL) is not used. The workload is batch writes and 
 
 | Notebook | Purpose |
 |---|---|
-| `notebooks/00_gcp_setup.ipynb` | Sign-in, settings, enable services, create bucket and protections, create datasets |
-| `notebooks/01_ingest_tennis_raw.ipynb` | Download the pinned files, upload to the bucket, write a manifest |
-| `notebooks/02_load_tennis_bigquery.ipynb` | Check headers, load into `tennis_raw.wta_matches`, compare counts |
-| `notebooks/03_explore_raw.ipynb` | SQL exploration of the raw table |
+| `notebooks/00_gcp_setup.ipynb` | Sign-in, settings, enable services, create bucket and protections, create datasets, download the pinned files, upload to the bucket, write a manifest, check headers, load into `tennis_raw.wta_matches`, compare counts |
+| `notebooks/01_explore_raw.ipynb` | SQL exploration of the raw table |
 |
 ## Scope decisions
 
