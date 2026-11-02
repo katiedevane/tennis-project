@@ -1,0 +1,4 @@
+# Pipeline environment (notebook 14). Python 3.13 needs Apache Beam 2.69 or later.
+apache-beam[gcp]==2.76.0
+pytest==9.1.1
+db-dtypes==1.7.1
