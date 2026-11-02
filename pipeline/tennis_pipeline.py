@@ -231,8 +231,11 @@ class ReadCsvFile(beam.DoFn):
         name = readable_file.metadata.path.rsplit("/", 1)[-1]
         self.files.inc()
         count = 0
+        # Beam's file object for .gz files is not a full Python file (TextIOWrapper cannot wrap it),
+        # so the decompressed bytes are read first. Fine at this size (about 9 MB uncompressed).
         with readable_file.open() as raw:
-            for row in csv.DictReader(io.TextIOWrapper(raw, encoding="utf-8-sig", newline="")):
+            content = io.TextIOWrapper(io.BytesIO(raw.read()), encoding="utf-8-sig", newline="")
+            for row in csv.DictReader(content):
                 count += 1
                 row["_source"] = name
                 row["_line"] = count + 1                 # line in the file (the header is line 1)

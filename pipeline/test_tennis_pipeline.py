@@ -1,9 +1,12 @@
 """Unit tests for tennis_pipeline.py. Run: python -m pytest -q test_tennis_pipeline.py
 
-Small known inputs, checked with Beam's TestPipeline (local, free). Expected: 8 passed.
+Small known inputs, checked with Beam's TestPipeline (local, free). Expected: 9 passed.
 """
+import gzip
+
 import apache_beam as beam
-from apache_beam.testing.test_pipeline import TestPipeline
+from apache_beam.io import fileio
+from apache_beam.testing.test_pipeline import TestPipeline as BeamTestPipeline   # alias: pytest would try to collect a class named Test*
 from apache_beam.testing.util import assert_that, equal_to
 
 import tennis_pipeline as tp
@@ -40,7 +43,7 @@ def test_validate_sends_good_and_bad_rows_to_the_right_place():
             dict(GOOD, round="Q1")]
     reasons = ["missing:winner_id", "bad_date", "bad_number:w_ace", "negative_value:l_df",
                "same_player_both_sides", "bad_round:Q1"]
-    with TestPipeline() as p:
+    with BeamTestPipeline() as p:
         out = validate(p | beam.Create(rows))
         assert_that(out.good | beam.combiners.Count.Globally(), equal_to([1]), label="one good row")
         assert_that(out[tp.BAD] | beam.Map(lambda r: r["reason"]), equal_to(reasons), label="six reasons")
@@ -50,7 +53,7 @@ def test_scope_excludes_other_levels_and_round_robin_events():
     rows = [GOOD,
             dict(GOOD, tourney_level="D"),
             dict(GOOD, tourney_id="2020-RR01")]
-    with TestPipeline() as p:
+    with BeamTestPipeline() as p:
         rr = p | "RR" >> beam.Create(["2020-RR01"])
         out = (p | beam.Create(rows)
                | beam.ParDo(tp.Scope(), round_robin_ids=beam.pvalue.AsList(rr)).with_outputs(tp.EXCLUDED, main="in_scope"))
@@ -89,7 +92,7 @@ def test_event_format_combines_correctly():
     readings = [("slam", ("G", "R128")), ("slam", ("G", "F")),
                 ("two", ("P", "R32")), ("two", ("P", "R128")),
                 ("long", ("I", "R64")), ("one", ("I", "R32")), ("one", ("I", "F"))]
-    with TestPipeline() as p:
+    with BeamTestPipeline() as p:
         out = p | beam.Create(readings) | beam.CombinePerKey(tp.EventFormat())
         assert_that(out, equal_to([("slam", "SLAM"), ("two", "TWO_WEEK"), ("long", "LONG_WEEK"), ("one", "ONE_WEEK")]))
 
@@ -109,8 +112,20 @@ def test_edition_summary_counts_matches():
     b = tp.clean_match(dict(GOOD, match_num="101", score="W/O", round="R64"))
     for m in (a, b):
         tp.match_window(m, "SLAM")
-    with TestPipeline() as p:
+    with BeamTestPipeline() as p:
         out = (p | beam.Create([("2019-0560", a), ("2019-0560", b)])
                | beam.CombinePerKey(tp.EditionStats())
                | beam.MapTuple(lambda tid, s: (tid, s["matches"], s["walkovers"], s["start_date"], s["last_match_day"])))
         assert_that(out, equal_to([("2019-0560", 2, 1, "2019-08-26", "2019-08-29")]))
+
+
+def test_reads_a_gzip_file_with_its_header(tmp_path):
+    """The real input is a .gz file opened by Beam's own file object (not a plain Python file)."""
+    columns = [c for c in GOOD if not c.startswith("_")]
+    lines = [",".join(columns)] + [",".join(str(dict(GOOD, match_num=str(n))[c]) for c in columns) for n in (1, 2, 3)]
+    (tmp_path / "part.csv.gz").write_bytes(gzip.compress(("\n".join(lines) + "\n").encode()))
+    with BeamTestPipeline() as p:
+        rows = (p | fileio.MatchFiles(str(tmp_path / "*.csv.gz")) | fileio.ReadMatches()
+                  | beam.ParDo(tp.ReadCsvFile()))
+        assert_that(rows | beam.Map(lambda r: (r["match_num"], r["_source"], r["_line"])),
+                    equal_to([("1", "part.csv.gz", 2), ("2", "part.csv.gz", 3), ("3", "part.csv.gz", 4)]))
