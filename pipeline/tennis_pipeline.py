@@ -435,9 +435,19 @@ def write_results(results, args, project):
              | f"Write_{table}" >> beam.io.WriteToText(f"{args.output}_{table}", file_name_suffix=".jsonl"))
 
 
+def counter_value(c):
+    """Committed value, else attempted, else 0 (a runner may report a counter that stayed at 0 as None)."""
+    for value in (c.committed, c.attempted):
+        if value is not None:
+            return value
+    return 0
+
+
 def print_counters(result):
-    counters = {c.key.metric.name: c.result for c in result.metrics().query()["counters"]
-                if c.key.metric.namespace == NS}
+    counters = {}
+    for c in result.metrics().query()["counters"]:
+        if c.key.metric.namespace == NS:
+            counters[c.key.metric.name] = counters.get(c.key.metric.name, 0) + counter_value(c)
     for name in sorted(counters):
         print(f"  {name:20s} {counters[name]:>8,}")
     parts = sum(counters.get(k, 0) for k in ("excluded_rows", "bad_rows", "good_rows"))
