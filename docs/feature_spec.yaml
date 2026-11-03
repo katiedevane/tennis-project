@@ -1,0 +1,259 @@
+feature_set_version: v2
+code_version: code-v9
+source_table: tennis_features.match_features_v1
+label: a_won (INTEGER, 1 if player A won)
+rows: played matches (walkovers excluded); splits by season (tennis_features.match_splits)
+random_seed: 42
+fitted_on: train (transformer_train); train + dev for the final model (transformer_train_dev)
+left_out:
+  best_of: constant (all best of 3)
+  ranking points: duplicate rank (Spearman about -0.998)
+  missing-height flags: the meaning of 'missing' shifts between train and later seasons
+features:
+- name: log_rank_ratio
+  dtype: FLOAT
+  group: difference
+  definition: log(B rank) - log(A rank); > 0 when A is better ranked
+  inputs:
+  - a_rank
+  - b_rank
+  known_before_match: 'yes'
+  missing_values: 'unranked: fixed rank 2000 (worse than any rank) + unranked flag'
+  transformation: 'imputation (training median), StandardScaler without centring: 0 stays ''equal players'''
+  in_default_model: true
+- name: age_diff
+  dtype: FLOAT
+  group: difference
+  definition: A age - B age, years
+  inputs:
+  - a_age
+  - b_age
+  known_before_match: 'yes'
+  missing_values: training median (under 0.1% missing)
+  transformation: 'imputation (training median), StandardScaler without centring: 0 stays ''equal players'''
+  in_default_model: true
+- name: form_diff_52w
+  dtype: FLOAT
+  group: difference
+  definition: 'A minus B: smoothed win rate in the 365D before the tournament start, (wins + 2.5) / (matches + 5)'
+  inputs:
+  - a_id
+  - b_id
+  - tourney_date
+  - a_won
+  known_before_match: yes (earlier tournaments only)
+  missing_values: 'none: smoothing gives a value for every player'
+  transformation: 'imputation (training median), StandardScaler without centring: 0 stays ''equal players'''
+  in_default_model: true
+- name: surface_form_diff_52w
+  dtype: FLOAT
+  group: difference
+  definition: As form_diff_52w, on the same surface only
+  inputs:
+  - a_id
+  - b_id
+  - surface
+  - tourney_date
+  - a_won
+  known_before_match: yes (earlier tournaments only)
+  missing_values: none (smoothed)
+  transformation: 'imputation (training median), StandardScaler without centring: 0 stays ''equal players'''
+  in_default_model: true
+- name: prior_matches_log_diff
+  dtype: FLOAT
+  group: difference
+  definition: log(1 + A earlier matches) - log(1 + B earlier matches), all earlier tournaments
+  inputs:
+  - a_id
+  - b_id
+  - tourney_date
+  known_before_match: yes (earlier tournaments only)
+  missing_values: none (0 earlier matches is a value)
+  transformation: 'imputation (training median), StandardScaler without centring: 0 stays ''equal players'''
+  in_default_model: true
+- name: h2h_diff
+  dtype: INTEGER
+  group: difference
+  definition: A wins minus B wins in their earlier meetings
+  inputs:
+  - a_id
+  - b_id
+  - tourney_date
+  - a_won
+  known_before_match: yes (earlier tournaments only)
+  missing_values: none (no earlier meeting = 0)
+  transformation: 'imputation (training median), StandardScaler without centring: 0 stays ''equal players'''
+  in_default_model: true
+- name: temp
+  dtype: FLOAT
+  group: weather
+  definition: Daytime (10:00-20:00 local) temperature averaged over the possible match days, deg C
+  inputs:
+  - weather file
+  - match_date_min
+  - match_date_max
+  known_before_match: 'yes'
+  missing_values: training median (none expected)
+  transformation: imputation (training median), StandardScaler
+  in_default_model: true
+- name: humidity
+  dtype: FLOAT
+  group: weather
+  definition: 'As temp: relative humidity, %'
+  inputs:
+  - weather file
+  known_before_match: 'yes'
+  missing_values: training median (none expected)
+  transformation: imputation (training median), StandardScaler
+  in_default_model: true
+- name: wind
+  dtype: FLOAT
+  group: weather
+  definition: 'As temp: wind speed, km/h'
+  inputs:
+  - weather file
+  known_before_match: 'yes'
+  missing_values: training median (none expected)
+  transformation: imputation (training median), StandardScaler
+  in_default_model: true
+- name: rain_mm
+  dtype: FLOAT
+  group: weather_log
+  definition: Daytime precipitation, mm per day, averaged over the possible match days
+  inputs:
+  - weather file
+  known_before_match: 'yes'
+  missing_values: training median (none expected)
+  transformation: log(1 + x), imputation (training median), StandardScaler
+  in_default_model: true
+- name: elevation_m
+  dtype: FLOAT
+  group: weather_log
+  definition: Venue elevation, metres
+  inputs:
+  - venue_locations
+  known_before_match: 'yes'
+  missing_values: training median (none expected)
+  transformation: log(1 + x), imputation (training median), StandardScaler
+  in_default_model: true
+- name: a_unranked
+  dtype: INTEGER
+  group: flag
+  definition: 1 if player A has no ranking
+  inputs:
+  - a_rank
+  known_before_match: 'yes'
+  missing_values: none
+  transformation: none (0/1, passed through)
+  in_default_model: true
+- name: b_unranked
+  dtype: INTEGER
+  group: flag
+  definition: 1 if player B has no ranking
+  inputs:
+  - b_rank
+  known_before_match: 'yes'
+  missing_values: none
+  transformation: none (0/1, passed through)
+  in_default_model: true
+- name: a_entry_q
+  dtype: INTEGER
+  group: flag
+  definition: 1 if player A entered as a qualifier
+  inputs:
+  - a_entry
+  known_before_match: 'yes'
+  missing_values: empty entry = direct entry (0)
+  transformation: none (0/1, passed through)
+  in_default_model: true
+- name: a_entry_wc
+  dtype: INTEGER
+  group: flag
+  definition: 1 if player A entered with a wildcard
+  inputs:
+  - a_entry
+  known_before_match: 'yes'
+  missing_values: empty entry = direct entry (0)
+  transformation: none (0/1, passed through)
+  in_default_model: true
+- name: a_entry_ll
+  dtype: INTEGER
+  group: flag
+  definition: 1 if player A entered as a lucky loser
+  inputs:
+  - a_entry
+  known_before_match: 'yes'
+  missing_values: empty entry = direct entry (0)
+  transformation: none (0/1, passed through)
+  in_default_model: true
+- name: b_entry_q
+  dtype: INTEGER
+  group: flag
+  definition: 1 if player B entered as a qualifier
+  inputs:
+  - b_entry
+  known_before_match: 'yes'
+  missing_values: empty entry = direct entry (0)
+  transformation: none (0/1, passed through)
+  in_default_model: true
+- name: b_entry_wc
+  dtype: INTEGER
+  group: flag
+  definition: 1 if player B entered with a wildcard
+  inputs:
+  - b_entry
+  known_before_match: 'yes'
+  missing_values: empty entry = direct entry (0)
+  transformation: none (0/1, passed through)
+  in_default_model: true
+- name: b_entry_ll
+  dtype: INTEGER
+  group: flag
+  definition: 1 if player B entered as a lucky loser
+  inputs:
+  - b_entry
+  known_before_match: 'yes'
+  missing_values: empty entry = direct entry (0)
+  transformation: none (0/1, passed through)
+  in_default_model: true
+- name: surface
+  dtype: STRING
+  group: category
+  definition: hard, clay, grass, carpet
+  inputs:
+  - surface
+  known_before_match: 'yes'
+  missing_values: none missing
+  transformation: OneHotEncoder, categories learned from train, unknown categories ignored
+  in_default_model: true
+- name: tourney_level
+  dtype: STRING
+  group: category
+  definition: G, PM, P, I
+  inputs:
+  - tourney_level
+  known_before_match: 'yes'
+  missing_values: none missing
+  transformation: OneHotEncoder, categories learned from train, unknown categories ignored
+  in_default_model: true
+- name: round
+  dtype: STRING
+  group: category
+  definition: R128 ... F
+  inputs:
+  - round
+  known_before_match: 'yes'
+  missing_values: none missing
+  transformation: OneHotEncoder, categories learned from train, unknown categories ignored
+  in_default_model: true
+- name: ht_diff
+  dtype: FLOAT
+  group: ablation
+  definition: 'A height - B height, cm. NOT in the default model: dev-only ablation'
+  inputs:
+  - a_ht
+  - b_ht
+  known_before_match: 'yes'
+  missing_values: training median, no missing flag (the meaning of missing shifts over time)
+  transformation: 'only in the ablation: imputation (training median), StandardScaler without centring'
+  in_default_model: false
