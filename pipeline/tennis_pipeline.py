@@ -443,8 +443,12 @@ def counter_value(c):
     return 0
 
 
+COUNTER_NAMES = ("files_read", "empty_files", "rows_read", "excluded_rows", "bad_rows", "good_rows",
+                 "flag_minutes", "flag_serve_stats", "surface_carpet", "hand_unknown", "seed_code_to_entry", "no_window")
+
+
 def print_counters(result):
-    counters = {}
+    counters = dict.fromkeys(COUNTER_NAMES, 0)          # a counter that never moved may not be reported: it is 0
     for c in result.metrics().query()["counters"]:
         if c.key.metric.namespace == NS:
             counters[c.key.metric.name] = counters.get(c.key.metric.name, 0) + counter_value(c)
